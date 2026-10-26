@@ -11,9 +11,11 @@ Plugin privado do Claude Code com a skill `account-switcher`. No Windows, ela pe
 
 O `gh` precisa estar logado na conta que tem acesso a este repositório, porque ele é privado.
 
+O plugin é listado no marketplace `linden-plugins`, que mora no repositório [`claude-pipeline`](https://github.com/Lindenjefferson/claude-pipeline):
+
 ```
-/plugin marketplace add Lindenjefferson/claude-account-switcher
-/plugin install account-switcher@linden-privado
+/plugin marketplace add Lindenjefferson/claude-pipeline
+/plugin install account-switcher@linden-plugins
 ```
 
 Depois, numa sessão do Claude Code: **"instala a skill account-switcher"**. Ela verifica o PC, pergunta as contas, instala e diz o que falta (um `/login` por conta).
