@@ -1,4 +1,4 @@
-# claude-account-switcher
+# account-switcher
 
 Plugin privado do Claude Code com a skill `account-switcher`. No Windows, ela permite:
 
