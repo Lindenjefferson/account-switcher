@@ -25,7 +25,7 @@ $Script:ChavesSemente = @('mcpServers', 'projects', 'githubRepoPaths', 'hasCompl
 
 $Script:MarcaInicio = '<!-- account-switcher:inicio -->'
 $Script:MarcaFim    = '<!-- account-switcher:fim -->'
-# Acha o bloco tambem com as marcas de antes da 2.0.1, quando o plugin se chamava account-switcher.
+# Acha o bloco tambem com as marcas da 1.4.0 e anteriores, quando o plugin se chamava account-switcher.
 $Script:RegexBloco  = '(?s)<!-- (?:account-switcher|account-switcher):inicio -->.*?<!-- (?:account-switcher|account-switcher):fim -->'
 
 function Get-Contas {
