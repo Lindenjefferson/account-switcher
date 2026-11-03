@@ -23,10 +23,10 @@ $Script:ChavesSemente = @('mcpServers', 'projects', 'githubRepoPaths', 'hasCompl
                           'claudeInChromeDefaultEnabled', 'hasCompletedClaudeInChromeOnboarding',
                           'cachedChromeExtensionInstalled')
 
-$Script:MarcaInicio = '<!-- gerenciador-contas:inicio -->'
-$Script:MarcaFim    = '<!-- gerenciador-contas:fim -->'
-# Acha o bloco tambem com as marcas da 1.4.0 e anteriores, quando o plugin se chamava multiplas-contas.
-$Script:RegexBloco  = '(?s)<!-- (?:gerenciador-contas|claude-acc-manager|multiplas-contas):inicio -->.*?<!-- (?:gerenciador-contas|claude-acc-manager|multiplas-contas):fim -->'
+$Script:MarcaInicio = '<!-- claude-accounts:inicio -->'
+$Script:MarcaFim    = '<!-- claude-accounts:fim -->'
+# Acha o bloco tambem com as marcas antigas: gerenciador-contas (ate a 1.6.0) e multiplas-contas (1.4.0 e anteriores).
+$Script:RegexBloco  = '(?s)<!-- (?:claude-accounts|gerenciador-contas|claude-acc-manager|multiplas-contas):inicio -->.*?<!-- (?:claude-accounts|gerenciador-contas|claude-acc-manager|multiplas-contas):fim -->'
 
 function Get-Contas {
     $cfg = Get-Content (Join-Path $Base 'contas.json') -Raw -Encoding UTF8 | ConvertFrom-Json
