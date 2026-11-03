@@ -110,11 +110,6 @@ Os testes ficam em [`tests/`](tests) e rodam na raiz do repositório com `Invoke
 - O `contas.json`, com as suas contas reais, fica só no PC e nunca vai para o repositório.
 - Um bloco no `~/.claude/CLAUDE.md`, a pasta `~/.claude-contas/bin` no PATH e o atalho do Explorer no registro do usuário.
 
-## Quando não usar
-
-- macOS ou Linux: os scripts são só para Windows.
-- Para separar ambientes: as contas compartilham settings, memória e histórico de propósito. Se você quer uma conta com configuração própria, este plugin não é para isso.
-
 ## Atualização
 
 Depois de atualizar o plugin, peça à skill para reinstalar ou rode `instalar.ps1` de novo: ele copia os scripts novos, não refaz o backup e não toca no `contas.json`. Para adicionar ou remover contas, mudar a principal ou o atalho, veja a seção "Manutenção" do [`SKILL.md`](plugins/account-switcher/skills/account-switcher/SKILL.md).
