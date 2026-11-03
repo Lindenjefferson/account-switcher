@@ -33,7 +33,7 @@ O objetivo é trocar de conta (por exemplo, para ter mais cota) sem perder nada:
 - [Claude Code](https://code.claude.com) instalado e logado numa conta;
 - o modo desenvolvedor do Windows, de preferência: sem ele, os arquivos compartilhados usam hard link em vez de symlink.
 
-**Instalar:** o plugin é listado no marketplace `linden-plugins`, que mora no repositório [`claude-pipeline`](https://github.com/Lindenjefferson/claude-pipeline):
+**Instalar:** o plugin se chama `account-switcher` (nomes de plugin que começam com `claude-` são reservados à Anthropic) e é listado no marketplace `linden-plugins`, que mora no repositório [`claude-pipeline`](https://github.com/Lindenjefferson/claude-pipeline):
 
 ```
 /plugin marketplace add Lindenjefferson/claude-pipeline
