@@ -1,6 +1,6 @@
 # claude-accounts
 
-Plugin privado do Claude Code com a skill `claude-accounts`. No Windows, ela permite:
+Plugin do Claude Code com a skill `claude-accounts`. No Windows, ela permite:
 
 - ter uma conta principal e quantas secundárias quiser, e alternar entre elas com `cc <conta>` sem relogar. Cada conta tem só o login separado; settings, histórico, memória, skills e plugins são compartilhados. Artefatos são publicados na principal, ou em outra conta indicada com confirmação;
 - abrir o Claude na pasta atual digitando `cc` (ou `cc <conta>`) na barra de endereço do Explorer;
@@ -8,8 +8,6 @@ Plugin privado do Claude Code com a skill `claude-accounts`. No Windows, ela per
 - escolher em quais contas o Remote Control liga por padrão (`"rc": true`), com `--rc` / `--no-rc` para mudar só naquela sessão.
 
 ## Instalar num PC novo
-
-O `gh` precisa estar logado na conta que tem acesso a este repositório, porque ele é privado.
 
 O plugin é listado no marketplace `linden-plugins`, que mora no repositório [`claude-pipeline`](https://github.com/Lindenjefferson/claude-pipeline):
 
