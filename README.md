@@ -119,8 +119,6 @@ Os testes ficam em [`tests/`](tests) e rodam na raiz do repositório com `Invoke
 
 Depois de atualizar o plugin, peça à skill para reinstalar ou rode `instalar.ps1` de novo: ele copia os scripts novos, não refaz o backup e não toca no `contas.json`. Para adicionar ou remover contas, mudar a principal ou o atalho, veja a seção "Manutenção" do [`SKILL.md`](plugins/account-switcher/skills/account-switcher/SKILL.md).
 
-O plugin já se chamou `account-switcher`, `account-switcher`, `account-switcher` e `account-switcher`; o bloco escrito no `~/.claude/CLAUDE.md` com as marcas desses nomes continua sendo reconhecido e substituído pelo `setup-contas.ps1`. O repositório e a skill continuam se chamando `account-switcher`.
-
 ## Contribuindo
 
 - Edite os scripts no repositório, em `plugins/account-switcher/skills/account-switcher/scripts/`, nunca a cópia em `~/.claude-contas`: o próximo `instalar.ps1` sobrescreve a cópia.
