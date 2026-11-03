@@ -33,7 +33,7 @@ O objetivo é trocar de conta (por exemplo, para ter mais cota) sem perder nada:
 - [Claude Code](https://code.claude.com) instalado e logado numa conta;
 - o modo desenvolvedor do Windows, de preferência: sem ele, os arquivos compartilhados usam hard link em vez de symlink.
 
-**Instalar:** o plugin se chama `account-switcher` (nomes de plugin que começam com `claude-` são reservados à Anthropic) e é listado no marketplace `linden-plugins`, que mora no repositório [`claude-pipeline`](https://github.com/Lindenjefferson/claude-pipeline):
+**Instalar:** o plugin é listado no marketplace `linden-plugins`, que mora no repositório [`claude-pipeline`](https://github.com/Lindenjefferson/claude-pipeline):
 
 ```
 /plugin marketplace add Lindenjefferson/claude-pipeline
@@ -80,4 +80,6 @@ Os scripts ficam em [`plugins/account-switcher/skills/account-switcher/scripts/`
 
 Depois de atualizar o plugin, peça à skill para reinstalar ou rode `instalar.ps1` de novo: ele copia os scripts novos, não refaz o backup e não toca no `contas.json`. Para adicionar ou remover contas, mudar a principal ou o atalho, veja a seção "Manutenção" do [`SKILL.md`](plugins/account-switcher/skills/account-switcher/SKILL.md).
 
-Feito e usado no dia a dia pelo autor; issues e sugestões são bem-vindas, sem garantia de suporte.
+## Licença
+
+[MIT](LICENSE). Feito e usado no dia a dia pelo autor; issues e sugestões são bem-vindas, sem garantia de suporte.

@@ -47,6 +47,17 @@ Describe 'Bloco do CLAUDE.md' {
         ([regex]::Matches($t, '<!-- account-switcher:inicio -->')).Count | Should Be 1
     }
 
+    It 'troca o bloco com as marcas account-switcher pelo novo, sem duplicar' {
+        $raiz = Join-Path $TestDrive 'm5'
+        . New-AmbienteFalso $raiz @{ principal = 'a'; contas = @{ a = @{ email = 'a@x' } } }
+        $md = Set-ClaudeMdFalso $raiz ($antigo -replace 'account-switcher', 'account-switcher')
+        Update-ClaudeMd
+        $t = Get-Content $md -Raw
+        $t | Should Not Match 'account-switcher:'
+        $t | Should Not Match 'velho'
+        ([regex]::Matches($t, '<!-- account-switcher:inicio -->')).Count | Should Be 1
+    }
+
     It 'remove o bloco com as marcas antigas' {
         $raiz = Join-Path $TestDrive 'm2'
         . New-AmbienteFalso $raiz @{ principal = 'a'; contas = @{ a = @{ email = 'a@x' } } }
