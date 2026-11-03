@@ -33,11 +33,11 @@ O objetivo é trocar de conta (por exemplo, para ter mais cota) sem perder nada:
 - [Claude Code](https://code.claude.com) instalado e logado numa conta;
 - o modo desenvolvedor do Windows, de preferência: sem ele, os arquivos compartilhados usam hard link em vez de symlink.
 
-**Instalar:** o plugin é listado no marketplace `linden-plugins`, que mora no repositório [`claude-pipeline`](https://github.com/Lindenjefferson/claude-pipeline):
+**Instalar:** o plugin se chama `account-switcher` (nomes de plugin que começam com `claude-` são reservados à Anthropic) e é listado no marketplace `linden-plugins`, que mora no repositório [`claude-pipeline`](https://github.com/Lindenjefferson/claude-pipeline):
 
 ```
 /plugin marketplace add Lindenjefferson/claude-pipeline
-/plugin install claude-accounts@linden-plugins
+/plugin install account-switcher@linden-plugins
 ```
 
 Depois, numa sessão do Claude Code, peça **"instala a skill claude-accounts"**. Ela verifica o PC, pergunta as contas (nome curto e e-mail da principal e das secundárias, a conta do Claude in Chrome, o atalho do Explorer e em quais contas o RC liga), instala e diz o que falta.
@@ -52,7 +52,7 @@ Depois, numa sessão do Claude Code, peça **"instala a skill claude-accounts"**
 
 | Peça | O que faz |
 |---|---|
-| [`SKILL.md`](plugins/claude-accounts/skills/claude-accounts/SKILL.md) | Roteiro de instalação, manutenção, diagnóstico e regras |
+| [`SKILL.md`](plugins/account-switcher/skills/claude-accounts/SKILL.md) | Roteiro de instalação, manutenção, diagnóstico e regras |
 | `instalar.ps1` | Verifica o PC (`-Verificar`), faz backup e instala tudo |
 | `setup-contas.ps1` | Refaz pastas, links e o bloco do `CLAUDE.md` a partir do `contas.json`; idempotente |
 | `desfazer-contas.ps1` | Remove links, PATH, atalho e o bloco do `CLAUDE.md` |
@@ -63,7 +63,7 @@ Depois, numa sessão do Claude Code, peça **"instala a skill claude-accounts"**
 | `modelo-CLAUDE.md` | Modelo do bloco de regras do `~/.claude/CLAUDE.md` |
 | `contas.exemplo.json` | Exemplo de configuração |
 
-Os scripts ficam em [`plugins/claude-accounts/skills/claude-accounts/scripts/`](plugins/claude-accounts/skills/claude-accounts/scripts) e são copiados para `~/.claude-contas` na instalação. Os testes, em [`tests/`](tests), rodam com Pester (`Invoke-Pester tests`).
+Os scripts ficam em [`plugins/account-switcher/skills/claude-accounts/scripts/`](plugins/account-switcher/skills/claude-accounts/scripts) e são copiados para `~/.claude-contas` na instalação. Os testes, em [`tests/`](tests), rodam com Pester (`Invoke-Pester tests`).
 
 ## O que fica no seu PC
 
@@ -78,6 +78,6 @@ Os scripts ficam em [`plugins/claude-accounts/skills/claude-accounts/scripts/`](
 
 ## Atualização
 
-Depois de atualizar o plugin, peça à skill para reinstalar ou rode `instalar.ps1` de novo: ele copia os scripts novos, não refaz o backup e não toca no `contas.json`. Para adicionar ou remover contas, mudar a principal ou o atalho, veja a seção "Manutenção" do [`SKILL.md`](plugins/claude-accounts/skills/claude-accounts/SKILL.md).
+Depois de atualizar o plugin, peça à skill para reinstalar ou rode `instalar.ps1` de novo: ele copia os scripts novos, não refaz o backup e não toca no `contas.json`. Para adicionar ou remover contas, mudar a principal ou o atalho, veja a seção "Manutenção" do [`SKILL.md`](plugins/account-switcher/skills/claude-accounts/SKILL.md).
 
 Feito e usado no dia a dia pelo autor; issues e sugestões são bem-vindas, sem garantia de suporte.
