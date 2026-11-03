@@ -1,4 +1,4 @@
-# account-switcher
+# Account Switcher
 
 > *In English:* a Claude Code plugin for Windows that runs several Claude Code accounts on one PC, switched with `cc <account>` without logging in again. Only the login is per account; settings, history, memory, skills and plugins are shared. It also shows each account's usage and adds a `cc` shortcut to the Explorer address bar. The docs are in Portuguese.
 
