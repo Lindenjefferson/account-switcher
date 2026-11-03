@@ -23,10 +23,10 @@ $Script:ChavesSemente = @('mcpServers', 'projects', 'githubRepoPaths', 'hasCompl
                           'claudeInChromeDefaultEnabled', 'hasCompletedClaudeInChromeOnboarding',
                           'cachedChromeExtensionInstalled')
 
-$Script:MarcaInicio = '<!-- claude-accounts:inicio -->'
-$Script:MarcaFim    = '<!-- claude-accounts:fim -->'
-# Acha o bloco tambem com as marcas antigas: gerenciador-contas (ate a 1.6.0) e multiplas-contas (1.4.0 e anteriores).
-$Script:RegexBloco  = '(?s)<!-- (?:claude-accounts|gerenciador-contas|claude-acc-manager|multiplas-contas):inicio -->.*?<!-- (?:claude-accounts|gerenciador-contas|claude-acc-manager|multiplas-contas):fim -->'
+$Script:MarcaInicio = '<!-- account-switcher:inicio -->'
+$Script:MarcaFim    = '<!-- account-switcher:fim -->'
+# Acha o bloco tambem com as marcas antigas: claude-accounts (1.7.0), gerenciador-contas (ate a 1.6.0) e multiplas-contas (1.4.0 e anteriores).
+$Script:RegexBloco  = '(?s)<!-- (?:account-switcher|claude-accounts|gerenciador-contas|claude-acc-manager|multiplas-contas):inicio -->.*?<!-- (?:account-switcher|claude-accounts|gerenciador-contas|claude-acc-manager|multiplas-contas):fim -->'
 
 function Get-Contas {
     $cfg = Get-Content (Join-Path $Base 'contas.json') -Raw -Encoding UTF8 | ConvertFrom-Json
