@@ -25,8 +25,8 @@ $Script:ChavesSemente = @('mcpServers', 'projects', 'githubRepoPaths', 'hasCompl
 
 $Script:MarcaInicio = '<!-- account-switcher:inicio -->'
 $Script:MarcaFim    = '<!-- account-switcher:fim -->'
-# Acha o bloco tambem com as marcas da 1.4.0 e anteriores, quando o plugin se chamava account-switcher.
-$Script:RegexBloco  = '(?s)<!-- (?:account-switcher|account-switcher|account-switcher):inicio -->.*?<!-- (?:account-switcher|account-switcher|account-switcher):fim -->'
+# Acha o bloco tambem com as marcas antigas: account-switcher (ate a 1.6.0) e account-switcher (1.4.0 e anteriores).
+$Script:RegexBloco  = '(?s)<!-- (?:account-switcher|account-switcher|account-switcher|account-switcher):inicio -->.*?<!-- (?:account-switcher|account-switcher|account-switcher|account-switcher):fim -->'
 
 function Get-Contas {
     $cfg = Get-Content (Join-Path $Base 'contas.json') -Raw -Encoding UTF8 | ConvertFrom-Json
