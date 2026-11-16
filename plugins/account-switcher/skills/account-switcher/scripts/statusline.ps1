@@ -1,14 +1,14 @@
-# Status line do Claude Code: "<conta> . Sessao: x% (reinicia em 2h05) . Semana: y% (reinicia em 3d 4h)",
-# com a porcentagem em amarelo a partir de avisoUso e vermelho a partir de 95%. O Claude Code manda o JSON da sessao pela entrada padrao e le a saida
-# em UTF-8 (por isso a troca de encoding: o padrao do PowerShell 5.1 e o codepage OEM).
-# Em qualquer falha, escreve uma linha vazia.
+# Claude Code status line: "<account> . Session: x% (resets in 2h05) . Week: y% (resets in 3d 4h)",
+# with the percentage in yellow from usageWarning and red from 95%. Claude Code sends the session JSON on
+# stdin and reads the output as UTF-8 (hence the encoding switch: the Windows PowerShell 5.1 default is the OEM codepage).
+# On any failure it writes an empty line.
 try {
     [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false
-    . (Join-Path $PSScriptRoot 'comum.ps1')
-    $entrada = [Console]::In.ReadToEnd() | ConvertFrom-Json
-    $conta = try { Get-ContaAtual } catch { $null }
-    $aviso = try { (Get-Contas).AvisoUso } catch { 80 }
-    [Console]::Out.Write((Format-StatusLine $entrada $conta $aviso))
+    . (Join-Path $PSScriptRoot 'common.ps1')
+    $data = [Console]::In.ReadToEnd() | ConvertFrom-Json
+    $account = try { Get-CurrentAccount } catch { $null }
+    $warn = try { (Get-Accounts).UsageWarning } catch { 80 }
+    [Console]::Out.Write((Format-StatusLine $data $account $warn))
 } catch {
     [Console]::Out.Write('')
 }

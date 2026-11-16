@@ -1,7 +1,7 @@
 {
   "name": "account-switcher",
-  "version": "1.1.0",
-  "description": "One main Claude Code account and as many secondary ones as you like, switched with a short command without logging in again (CLAUDE_CONFIG_DIR per account, everything else shared). Windows (cc, plus the Explorer address bar shortcut) and macOS / Linux (cca).",
+  "version": "1.2.0",
+  "description": "One main Claude Code account and as many secondary ones as you like, switched with a short command without logging in again (CLAUDE_CONFIG_DIR per account, everything else shared). Windows (command cc, plus an Explorer address bar shortcut) and macOS / Linux (command cca).",
   "author": {
     "name": "Lindenjefferson"
   },

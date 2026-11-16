@@ -1,84 +1,86 @@
 ---
 name: account-switcher
-description: 'Instala e mantém várias contas do Claude Code no Windows (uma principal e quantas secundárias quiser), alternadas com `cc <conta>` sem relogar (CLAUDE_CONFIG_DIR por conta, resto compartilhado com ~/.claude), mais o atalho "cc" na barra de endereço do Explorer. Use para instalar num PC novo, adicionar/remover conta secundária, trocar a conta principal, reinstalar depois de atualizar o plugin, desfazer, diagnosticar o `cc`, ou abrir uma sessão de outra conta (ex.: a principal, para publicar um artefato). Também funciona no macOS e no Linux (scripts bash em scripts-unix/, comando cca): use as instruções da seção "macOS and Linux" quando o sistema não for Windows.'
+description: 'Installs and maintains several Claude Code accounts on Windows (one main account and as many secondary ones as you like), switched with `cc <account>` without logging in again (CLAUDE_CONFIG_DIR per account, everything else shared with ~/.claude), plus the "cc" shortcut in the Explorer address bar. Use it to install on a new PC, add or remove a secondary account, change the main account, reinstall after updating the plugin, upgrade an older install (migrated automatically), undo, diagnose `cc`, or open a session of another account (e.g. the main one, to publish an artifact). Also works on macOS and Linux (bash scripts in scripts-unix/, command cca): follow the "macOS and Linux" section when the system is not Windows.'
 ---
 
 # Account Switcher
 
-O usuário tem **uma conta principal** e **quantas contas secundárias quiser**:
-- A principal é a padrão do `cc` e onde os artefatos são publicados, salvo indicação explícita do usuário (com confirmação).
-- As secundárias usam o mesmo ambiente e só mudam o login, por exemplo para ter mais cota.
-- Os nomes das contas são escolhidos pelo usuário. Não presuma nomes nem quantidade.
+The user has **one main account** and **as many secondary accounts as they like**:
+- The main one is the default of `cc` and where artifacts are published, unless the user explicitly says otherwise (with confirmation).
+- The secondary ones share the same environment and only change the login, for example to get more quota.
+- The account names are chosen by the user. Do not assume names or how many there are.
 
-Os scripts ficam na pasta `scripts/` ao lado deste SKILL.md e são instalados em `~/.claude-contas`. Rode-os sempre com `powershell -NoProfile -ExecutionPolicy Bypass -File <script>`: a política de execução padrão do Windows bloqueia .ps1.
+The scripts live in the `scripts/` folder next to this SKILL.md and are installed into `~/.claude-accounts`. Always run them with `powershell -NoProfile -ExecutionPolicy Bypass -File <script>`: the default Windows execution policy blocks .ps1 files.
 
 **Which platform?** On Windows, follow everything below. On macOS or Linux (`uname -s` prints `Darwin` or `Linux`), skip to [macOS and Linux](#macos-and-linux) at the end of this file: the scripts, the config file and the command name are different there.
 
-## Como funciona (para explicar ao usuário)
-- Cada conta tem uma pasta de config própria (`CLAUDE_CONFIG_DIR`) com seu login (`.credentials.json`) e seu `.claude.json`.
-- Todo o resto aponta para `~/.claude` (a "pasta mestre"): `settings.json`, `history.jsonl`, `CLAUDE.md`, `keybindings.json` por link de arquivo; `projects/`, `skills/`, `plugins/`, `sessions/` etc. por junction. Assim, histórico, memória, skills, plugins e a lista de sessões são iguais em todas as contas.
-- A conta já logada em `~/.claude` usa a própria pasta mestre (`"pasta": "~/.claude"`) e roda **sem** `CLAUDE_CONFIG_DIR`.
-- `cc [conta] [args]` abre o Claude na conta (sem conta = padrão), confere o e-mail logado com `claude auth status --json` e nomeia a sessão "pasta (conta)". `cc -l` lista as contas, se o RC liga por padrão em cada uma e o uso de cada uma (janela de 5h e semanal, com o tempo até reiniciar).
-- **Remote Control por conta:** o `settings.json` é compartilhado, então o `cc` decide o RC de cada sessão passando `--settings ~/.claude-contas/rc/ligado.json` ou `desligado.json`. Liga só nas contas com `"rc": true` no `contas.json`; `cc <conta> --rc [nome]` liga e `--no-rc` desliga, só naquela sessão. O `settings.json` compartilhado fica com `remoteControlAtStartup: false` (gravado pelo `setup-contas.ps1` e conferido a cada `cc`), para que sessões abertas sem o `cc` (claude direto, IDE, app) não liguem o RC.
-- **Uso:** o `cc` consulta `api.anthropic.com/api/oauth/usage` com o token lido, só em memória, do `.credentials.json` da própria conta. Se o token venceu (ele só é renovado quando a conta roda), mostra o último uso que a conta salvou no `.claude.json`, com o horário. Ao abrir uma conta com uso igual ou acima de `avisoUso` (padrão 80) na janela de 5h ou na semanal, o `cc` avisa, sugere a conta com mais folga e pergunta antes de abrir (no modo `-p`, só avisa em stderr).
-- **Status line:** `statusline.ps1` mostra `<conta> · Sessão: x% (reinicia em 2h05) · Semana: y% (reinicia em 3d 4h)`, com a porcentagem em amarelo a partir de `avisoUso` e em vermelho a partir de 95%. O `setup-contas.ps1` registra no `settings.json` só se não houver outra status line.
-- Na barra de endereço do Explorer, o atalho (padrão `cc`) abre o PowerShell na pasta atual com `cc`. O Explorer não repassa a pasta para comandos do App Paths, então `explorer/claude-aqui.ps1` descobre a pasta pela janela do Explorer que está na frente.
-- Uma conta nova recebe só as chaves de configuração do `~/.claude.json` (MCPs, projetos confiáveis etc.), nunca os dados da conta. Conectores do claude.ai são por conta e se configuram no site.
+## How it works (to explain to the user)
+- Each account has its own config folder (`CLAUDE_CONFIG_DIR`) with its login (`.credentials.json`) and its `.claude.json`.
+- Everything else points to `~/.claude` (the "master folder"): `settings.json`, `history.jsonl`, `CLAUDE.md`, `keybindings.json` through file links; `projects/`, `skills/`, `plugins/`, `sessions/` etc. through junctions. So history, memory, skills, plugins and the session list are the same in every account.
+- The account already logged in to `~/.claude` uses the master folder itself (`"dir": "~/.claude"`) and runs **without** `CLAUDE_CONFIG_DIR`.
+- `cc [account] [args]` opens Claude in the account (no account = the default), checks the logged-in e-mail with `claude auth status --json` and names the session "folder (account)". `cc -l` lists the accounts, whether RC turns on by default in each, and each one's usage (5-hour and weekly windows, with the time until reset).
+- **Remote Control per account:** `settings.json` is shared, so `cc` decides the RC of each session by passing `--settings ~/.claude-accounts/rc/on.json` or `off.json`. It turns on only in accounts with `"rc": true` in `accounts.json`; `cc <account> --rc [name]` turns it on and `--no-rc` off, for that session only. The shared `settings.json` keeps `remoteControlAtStartup: false` (written by `setup-accounts.ps1` and checked on every `cc`), so sessions opened without `cc` (claude directly, IDE, app) do not turn RC on.
+- **Usage:** `cc` queries `api.anthropic.com/api/oauth/usage` with the token read, in memory only, from the account's own `.credentials.json`. If the token expired (it is only renewed when the account runs), it shows the last usage the account saved in `.claude.json`, with the time. When you open an account whose usage is at or above `usageWarning` (default 80) in the 5-hour or the weekly window, `cc` warns, suggests the account with the most room and asks before opening (in `-p` mode it only warns on stderr).
+- **Status line:** `statusline.ps1` shows `<account> . Session: x% (resets in 2h05) . Week: y% (resets in 3d 4h)` (with a middle dot as the separator), with the percentage in yellow from `usageWarning` and in red from 95%. `setup-accounts.ps1` registers it in `settings.json` only if there is no other status line.
+- In the Explorer address bar, the shortcut (default `cc`, key `explorerShortcut`) opens PowerShell in the current folder with `cc`. Explorer does not pass the folder to App Paths commands, so `explorer/claude-here.ps1` finds the folder from the Explorer window that is in front.
+- A new account gets only the configuration keys of `~/.claude.json` (MCPs, trusted projects etc.), never the account data. claude.ai connectors are per account and are set up on the website.
 
-## Instalar num PC novo
-1. Rode `scripts/instalar.ps1 -Verificar`. Ele mostra o caminho do `claude.exe`, se há symlink (modo desenvolvedor) e conflitos. Se houver PROBLEMA, resolva com o usuário antes de seguir.
-2. Rode `claude auth status --json` (sem `CLAUDE_CONFIG_DIR`) para saber qual e-mail já está logado em `~/.claude`.
-3. Pergunte ao usuário, de uma vez:
-   - nome curto e e-mail da **conta principal**;
-   - nome curto e e-mail de cada **secundária**, quantas forem;
-   - em qual conta a extensão Claude in Chrome está logada, se o usuário usa a extensão (campo `chrome`; o Claude Code não consegue detectar isso sozinho);
-   - o atalho do Explorer (padrão `cc`).
-   - em quais contas o Remote Control deve ligar por padrão (campo `"rc": true`; sem ele, o RC fica desligado). Contas de trabalho geralmente ficam desligadas.
-   O caso comum é a principal já estar logada em `~/.claude` (passo 2) e as secundárias serem adicionadas depois.
-   - **Só uma conta tem `"pasta": "~/.claude"`:** a que está logada lá. As outras ficam em `~/.claude-contas/<nome>` sem precisar do campo. Se nenhuma conta tiver `pasta`, a principal usa `~/.claude`.
-   - Se o e-mail logado em `~/.claude` for o de uma secundária, é ela que recebe `"pasta": "~/.claude"`, e a principal ganha pasta própria (com um `/login`). Explique isso ao usuário.
-   - Não copie `.credentials.json` de uma pasta para outra.
-4. Escreva `~/.claude-contas/contas.json` em UTF-8 sem BOM, no formato de `scripts/contas.exemplo.json`, com `"principal": "<nome>"`. Se o usuário quiser que o `cc` sem argumento abra outra conta, acrescente `"padrao": "<nome>"`; a principal continua sendo a única que publica.
-5. Rode `scripts/instalar.ps1`. Ele faz backup na primeira vez, copia os scripts, cria as pastas e os links, põe `~/.claude-contas/bin` no PATH, registra o atalho do Explorer e escreve o bloco de contas no `~/.claude/CLAUDE.md` (entre marcas `<!-- account-switcher:... -->`, preservando o resto do arquivo).
-6. Passe ao usuário os próximos passos:
-   - abrir um terminal **novo** (o PATH mudou);
-   - rodar `cc <conta>` e `/login` uma vez em cada conta não logada;
-   - conferir com `cc -l`.
+## Install on a new PC
+0. If `~/.claude-contas` already exists, this is an upgrade of an older install, not a new install: follow "Upgrading from an older install" under Maintenance and do not write `accounts.json` by hand.
+1. Run `scripts/install.ps1 -Check`. It shows the path of `claude.exe`, whether symlinks work (developer mode) and conflicts. If there is a PROBLEM, fix it with the user before going on.
+2. Run `claude auth status --json` (without `CLAUDE_CONFIG_DIR`) to see which e-mail is already logged in to `~/.claude`.
+3. Ask the user, all at once:
+   - short name and e-mail of the **main account**;
+   - short name and e-mail of each **secondary account**, however many there are;
+   - which account the Claude in Chrome extension is logged in to, if the user uses the extension (field `chrome`; Claude Code cannot detect it by itself);
+   - the Explorer shortcut (default `cc`, field `explorerShortcut`);
+   - in which accounts Remote Control should turn on by default (field `"rc": true`; without it, RC stays off). Work accounts are usually left off.
+   The common case is the main account already being logged in to `~/.claude` (step 2) and the secondary ones being added later.
+   - **Only one account has `"dir": "~/.claude"`:** the one logged in there. The others live in `~/.claude-accounts/<name>` without needing the field. If no account has `dir`, the main one uses `~/.claude`.
+   - If the e-mail logged in to `~/.claude` belongs to a secondary account, that account gets `"dir": "~/.claude"`, and the main account gets its own folder (with a `/login`). Explain this to the user.
+   - Do not copy `.credentials.json` from one folder to another.
+4. Write `~/.claude-accounts/accounts.json` in UTF-8 without BOM, in the format of `scripts/accounts.example.json`, with `"main": "<name>"`. If the user wants `cc` with no argument to open another account, add `"default": "<name>"`; the main account stays the only one that publishes.
+5. Run `scripts/install.ps1`. It takes a backup the first time, copies the scripts, creates the folders and links, puts `~/.claude-accounts/bin` on the PATH, registers the Explorer shortcut and writes the accounts block in `~/.claude/CLAUDE.md` (between the markers `<!-- account-switcher:begin -->` and `<!-- account-switcher:end -->`, preserving the rest of the file).
+6. Give the user the next steps:
+   - open a **new** terminal (the PATH changed);
+   - run `cc <account>` and `/login` once in each account that is not logged in;
+   - check with `cc -l`.
 
-## Manutenção
-- **Adicionar conta secundária:** acrescente a conta em `~/.claude-contas/contas.json` e rode `~/.claude-contas/setup-contas.ps1`, que é idempotente e também atualiza o CLAUDE.md. Depois o usuário roda `cc <nova>` e faz `/login`.
-- **Mudar o RC padrão de uma conta ou o limite do aviso de uso:** edite `"rc"` da conta ou `"avisoUso"` no `contas.json`. Vale no próximo `cc`.
-- **Trocar a principal, o padrão, a conta do Chrome ou o atalho:** edite `contas.json` e rode `setup-contas.ps1`. Se mudou o atalho, rode `instalar.ps1`, que registra o novo; apague à mão a chave antiga em `HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\<antigo>.exe`.
-- **Remover uma conta:** primeiro tire os links da pasta dela com `. ~/.claude-contas/comum.ps1; Remove-LinksConta ((Get-Contas).Contas | ? Nome -eq '<conta>')`. Confira que não sobrou link na pasta (`Get-ChildItem -Force | ? LinkType`). Só então apague a pasta, tire a conta do `contas.json` e rode `setup-contas.ps1`.
-- **Depois de atualizar o plugin:** rode `scripts/instalar.ps1` de novo para copiar os scripts novos. Ele não refaz o backup nem toca no `contas.json`.
-- **Desfazer:** `~/.claude-contas/desfazer-contas.ps1` remove links, PATH, atalho e o bloco do CLAUDE.md. Com `-ApagarPastas`, apaga também as pastas das contas extras.
+## Maintenance
+- **Add a secondary account:** add the account to `~/.claude-accounts/accounts.json` and run `~/.claude-accounts/setup-accounts.ps1`, which is idempotent and also updates CLAUDE.md. Then the user runs `cc <new>` and does `/login`.
+- **Change an account's default RC or the usage warning limit:** edit `"rc"` of the account or `"usageWarning"` in `accounts.json`. It takes effect on the next `cc`.
+- **Change the main account, the default, the Chrome account or the shortcut:** edit `accounts.json` and run `setup-accounts.ps1`. If you changed the shortcut, run `install.ps1`, which registers the new one; delete the old key by hand at `HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\<old>.exe`.
+- **Remove an account:** first take the links out of its folder with `. ~/.claude-accounts/common.ps1; Remove-AccountLinks ((Get-Accounts).Accounts | ? Name -eq '<account>')`. Check that no link is left in the folder (`Get-ChildItem -Force | ? LinkType`). Only then delete the folder, remove the account from `accounts.json` and run `setup-accounts.ps1`.
+- **After updating the plugin:** run `scripts/install.ps1` again to copy the new scripts. It does not redo the backup or touch `accounts.json`.
+- **Upgrading from an older install:** versions before this release installed into `~/.claude-contas` with a Portuguese `contas.json`. First check whether `~/.claude-contas` exists. If it does, ask the user to close every Claude Code session and terminal that uses an account from it (Windows will not rename a folder with open files), and run `scripts/install.ps1` from a plain PowerShell. It checks everything first and stops without changes if a check fails; then it migrates (`Move-LegacyInstall` in `common.ps1`): renames `~/.claude-contas` to `~/.claude-accounts` (account folders, logins and junctions are not touched), converts `contas.json` to `accounts.json` (the old file stays in `backups\contas.json.before-migration`), deletes the old script files, renames the CLAUDE.md block markers, repoints the status line in `settings.json`, takes the old `bin` folder off the user PATH, and then does the usual install (the Explorer shortcut is registered again, pointing to `explorer\claude-here.cmd`). Every step checks its own precondition, so an interrupted run can just be repeated. If both `~/.claude-contas` and `~/.claude-accounts` exist, nothing is migrated and the installer warns: do NOT write `accounts.json` by hand first on a machine that has the old folder, or the new accounts start without logins. Other files that mention the old folder (e.g. `~/.claude\plugins\*.json`) are only reported as warnings. Tell the user to open a new terminal afterwards. `scripts/install.ps1 -Check` reports a pending migration without changing anything. Be upfront that this migration was written without a Windows machine to run it end to end: the pure parts are covered by tests, the PATH and registry steps are not.
+- **Undo:** `~/.claude-accounts/uninstall.ps1` removes links, PATH entry, shortcut and the CLAUDE.md block. With `-DeleteFolders`, it also deletes the extra accounts' folders.
 
-## Publicar artefato em outra conta
-- **Conta alvo:** a principal, se o usuário não indicou nenhuma. Se ele indicou outra, confirme antes com AskUserQuestion, mostrando nome e e-mail ("Publicar na conta X (email), não na principal?"). Só siga com um sim. Nunca troque a conta alvo por conta própria.
-1. Confira a conta da sessão atual com `claude auth status --json`. Se já for a conta alvo, publique aqui.
-2. Senão, grave o conteúdo num arquivo e procure com ListAgents uma sessão cujo nome termine em "(<conta alvo>)".
-3. Se não houver, rode `~/.claude-contas/abrir-conta.ps1 <conta alvo> <pasta> [-Rc | -NoRc]`, que abre uma aba nova do Windows Terminal (sem ele, uma janela), e procure a sessão de novo.
-4. Peça por SendMessage que ela confira a própria conta com `claude auth status --json` e publique o arquivo.
-5. O `cc` tira as variáveis `CLAUDE*` herdadas desta sessão (menos `CLAUDE_CONFIG_DIR`); sem isso, a janela nova abriria com "Transcript saving is off" e não apareceria no ListAgents.
-6. O modo automático dela pede a aprovação do usuário na janela dela. Isso é esperado; avise o usuário.
+## Publish an artifact from another account
+- **Target account:** the main one, if the user named none. If they named another, confirm first with AskUserQuestion, showing name and e-mail ("Publish to account X (email), not to the main one?"). Only go ahead on a yes. Never change the target account on your own.
+1. Check the current session's account with `claude auth status --json`. If it already is the target account, publish here.
+2. Otherwise, save the content to a file and look with ListAgents for a session whose name ends in "(<target account>)".
+3. If there is none, run `~/.claude-accounts/open-account.ps1 <target account> <folder> [-Rc | -NoRc]` (parameters `-Account`, `-Folder`, `-Rc`, `-NoRc`), which opens a new Windows Terminal tab (without it, a window), and look for the session again.
+4. Ask it by SendMessage to check its own account with `claude auth status --json` and publish the file.
+5. `cc` removes the `CLAUDE*` variables inherited from this session (except `CLAUDE_CONFIG_DIR`); without that, the new window would open with "Transcript saving is off" and would not show up in ListAgents.
+6. Its auto mode asks for the user's approval in its own window. This is expected; tell the user.
 
-Claude in Chrome não precisa disso: funciona a partir de qualquer conta. O campo `chrome` do `contas.json` só registra em qual conta a extensão está logada (aparece no `cc -l` e no CLAUDE.md).
+Claude in Chrome does not need this: it works from any account. The `chrome` field of `accounts.json` only records which account the extension is logged in to (it shows in `cc -l` and in CLAUDE.md).
 
-## Nunca
-- `Remove-Item -Recurse` (ou apagar pelo Explorer) numa pasta de conta que ainda tem junctions. Isso apaga o conteúdo real de `~/.claude`. Use `Remove-LinksConta` ou `desfazer-contas.ps1`.
-- Copiar ou mover `.credentials.json` entre pastas: o token é renovado e a cópia deixa de valer.
-- Definir `CLAUDE_CONFIG_DIR` apontando para `~/.claude`: o Claude passaria a procurar `.claude.json` dentro da pasta.
-- Usar `$PROFILE` para o `cc`: em PCs com a política de execução padrão, ele não carrega. O `cc` é um `.cmd` no PATH de propósito.
+## Never
+- `Remove-Item -Recurse` (or deleting from Explorer) on an account folder that still has junctions. That deletes the real content of `~/.claude`. Use `Remove-AccountLinks` or `uninstall.ps1`.
+- Copy or move `.credentials.json` between folders: the token is renewed and the copy stops being valid.
+- Set `CLAUDE_CONFIG_DIR` pointing to `~/.claude`: Claude would start looking for `.claude.json` inside the folder.
+- Use `$PROFILE` for `cc`: on PCs with the default execution policy, it does not load. `cc` is a `.cmd` on the PATH on purpose.
 
-## Diagnóstico
-- **Digitar o atalho no Explorer abre uma pasta em vez do Claude:** existe uma pasta com esse nome (o Explorer navega antes de executar). Troque `atalhoExplorer`. `instalar.ps1 -Verificar` procura esses conflitos.
-- **Atalho do Explorer dá "Não é possível localizar o tipo [W.U]":** o `Add-Type` falhou porque `TMP` aponta para `C:\Windows\TEMP` (falta `TMP` no ambiente do usuário). O `claude-aqui.ps1` corrige isso na própria sessão; se ainda acontecer, reinstale os scripts. Para corrigir no Windows, crie `TMP` do usuário igual ao `TEMP` (`%USERPROFILE%\AppData\Local\Temp`).
-- **"cc não é reconhecido":** o terminal foi aberto antes da instalação. Abra outro.
-- **Aviso "logada como X, esperado Y":** o `/login` foi feito com o e-mail errado naquela pasta. Rode `/logout` e `/login` dentro de `cc <conta>`.
-- **Mensagem "alteração levada para a mestre":** um programa salvou por cima de um link e o `cc` refez o link. O conteúdo anterior fica em `~/.claude-contas/backups`.
-- **Uso aparece como "(salvo HH:mm)":** o token daquela conta venceu, então o valor é o último que ela salvou. Abrir a conta com `cc <conta>` atualiza. O `cc` não renova o token sozinho de propósito.
-- **Status line de conta e uso não aparece:** o `settings.json` já tinha outra `statusLine`, e o instalador não mexe nela. Para usar a nossa, tire a outra e rode `setup-contas.ps1`.
-- **RC ligou numa conta sem `rc`:** confira se alguém pôs `remoteControlAtStartup: true` no `settings.json` compartilhado (o `cc` volta para `false` ao abrir) ou se a sessão foi aberta com `--rc`.
+## Diagnosis
+- **Typing the shortcut in Explorer opens a folder instead of Claude:** a folder with that name exists (Explorer navigates before executing). Change `explorerShortcut`. `install.ps1 -Check` looks for these conflicts.
+- **Explorer shortcut gives "Unable to find type [W.U]":** `Add-Type` failed because `TMP` points to `C:\Windows\TEMP` (`TMP` is missing from the user environment). `claude-here.ps1` fixes this in its own session; if it still happens, reinstall the scripts. To fix it in Windows, create a user `TMP` equal to `TEMP` (`%USERPROFILE%\AppData\Local\Temp`).
+- **"cc is not recognized":** the terminal was opened before the install. Open another one.
+- **Warning "the folder of account X is logged in as Y, but Z was expected":** `/login` was done with the wrong e-mail in that folder. Run `/logout` and `/login` inside `cc <account>`.
+- **Message "change made in account X was carried over to the master folder":** a program saved over a link and `cc` rebuilt the link. The previous content is in `~/.claude-accounts/backups`.
+- **Usage shows "(saved HH:mm)":** that account's token expired, so the value is the last one it saved. Opening the account with `cc <account>` updates it. `cc` does not renew the token by itself, on purpose.
+- **Account and usage status line does not show up:** `settings.json` already had another `statusLine`, and the installer does not touch it. To use ours, remove the other one and run `setup-accounts.ps1`.
+- **RC turned on in an account without `rc`:** check whether someone put `remoteControlAtStartup: true` in the shared `settings.json` (`cc` sets it back to `false` when it opens) or whether the session was opened with `--rc`.
 
 # macOS and Linux
 

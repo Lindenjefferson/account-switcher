@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shared functions for the scripts in ~/.claude-accounts on macOS and Linux.
-# Counterpart of comum.ps1 on Windows: every account has its own config folder (CLAUDE_CONFIG_DIR)
+# Counterpart of common.ps1 on Windows: every account has its own config folder (CLAUDE_CONFIG_DIR)
 # with its own login; everything else is a symlink to the master folder ~/.claude.
 # This file only defines functions and variables (use it with "source"). It is compatible with the
 # bash 3.2 that ships with macOS: no associative arrays, no mapfile, no ${var,,}. Needs jq and curl.

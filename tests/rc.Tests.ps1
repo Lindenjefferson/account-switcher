@@ -1,101 +1,101 @@
-. (Join-Path $PSScriptRoot '_contas-falsas.ps1')
-$perfilReal = $env:USERPROFILE
-$raiz = Join-Path ([IO.Path]::GetTempPath()) ("mc-rc-" + [guid]::NewGuid())
-. New-AmbienteFalso $raiz @{ principal = 'pessoal'; contas = @{ pessoal = @{ email = 'p@x'; rc = $true }; edevize1 = @{ email = 'e@x' } } }
-$contas = (Get-Contas).Contas
-$pessoal = $contas | Where-Object Nome -eq 'pessoal'
-$empresa = $contas | Where-Object Nome -eq 'edevize1'
-$settings = Join-Path $raiz '.claude\settings.json'
-function Set-Settings([string]$texto) { [IO.File]::WriteAllText($settings, $texto) }
+. (Join-Path $PSScriptRoot '_fake-accounts.ps1')
+$realProfile = $env:USERPROFILE
+$root = Join-Path ([IO.Path]::GetTempPath()) ("mc-rc-" + [guid]::NewGuid())
+. New-FakeEnvironment $root @{ main = 'personal'; accounts = @{ personal = @{ email = 'p@x'; rc = $true }; work1 = @{ email = 'e@x' } } }
+$accts = (Get-Accounts).Accounts
+$personal = $accts | Where-Object Name -eq 'personal'
+$work = $accts | Where-Object Name -eq 'work1'
+$settings = Join-Path $root '.claude\settings.json'
+function Set-Settings([string]$text) { [IO.File]::WriteAllText($settings, $text) }
 function Get-Settings { Get-Content -LiteralPath $settings -Raw | ConvertFrom-Json }
 
-Describe 'Split-ArgsRc' {
-    It 'padrao da conta' {
-        (Split-ArgsRc $pessoal @()).Ligado | Should Be $true
-        (Split-ArgsRc $empresa @()).Ligado | Should Be $false
+Describe 'Split-RcArgs' {
+    It 'account default' {
+        (Split-RcArgs $personal @()).On | Should Be $true
+        (Split-RcArgs $work @()).On | Should Be $false
     }
 
-    It '--rc liga e fica nos args' {
-        $d = Split-ArgsRc $empresa @('--rc', 'minha-sessao')
-        $d.Ligado | Should Be $true
-        ($d.Resto -join ' ') | Should Be '--rc minha-sessao'
+    It '--rc turns it on and stays in the args' {
+        $d = Split-RcArgs $work @('--rc', 'my-session')
+        $d.On | Should Be $true
+        ($d.Rest -join ' ') | Should Be '--rc my-session'
     }
 
-    It '--no-rc desliga e sai dos args' {
-        $d = Split-ArgsRc $pessoal @('--no-rc', '-p', 'oi')
-        $d.Ligado | Should Be $false
-        ($d.Resto -join ' ') | Should Be '-p oi'
+    It '--no-rc turns it off and leaves the args' {
+        $d = Split-RcArgs $personal @('--no-rc', '-p', 'hi')
+        $d.On | Should Be $false
+        ($d.Rest -join ' ') | Should Be '-p hi'
     }
 
-    It 'o ultimo vence' {
-        (Split-ArgsRc $empresa @('--rc', '--no-rc')).Ligado | Should Be $false
-        (Split-ArgsRc $pessoal @('--no-rc', '--remote-control')).Ligado | Should Be $true
+    It 'the last one wins' {
+        (Split-RcArgs $work @('--rc', '--no-rc')).On | Should Be $false
+        (Split-RcArgs $personal @('--no-rc', '--remote-control')).On | Should Be $true
     }
 
-    It 'settings do usuario detectado' {
-        (Split-ArgsRc $empresa @('--settings', 'x.json')).SettingsDoUsuario | Should Be $true
-        (Split-ArgsRc $empresa @('-p', 'oi')).SettingsDoUsuario | Should Be $false
-    }
-}
-
-Describe 'Get-ArquivoRc' {
-    It 'arquivos rc' {
-        (Get-Content (Get-ArquivoRc $false) -Raw | ConvertFrom-Json).remoteControlAtStartup | Should Be $false
-        (Get-Content (Get-ArquivoRc $true) -Raw | ConvertFrom-Json).remoteControlAtStartup | Should Be $true
-        Get-ArquivoRc $true | Should Be (Join-Path $raiz '.claude-contas\rc\ligado.json')
+    It 'user settings detected' {
+        (Split-RcArgs $work @('--settings', 'x.json')).UserSettings | Should Be $true
+        (Split-RcArgs $work @('-p', 'hi')).UserSettings | Should Be $false
     }
 }
 
-Describe 'Set-RcDesligadoCompartilhado' {
-    It 'compartilhado: true vira false' {
+Describe 'Get-RcFile' {
+    It 'rc files' {
+        (Get-Content (Get-RcFile $false) -Raw | ConvertFrom-Json).remoteControlAtStartup | Should Be $false
+        (Get-Content (Get-RcFile $true) -Raw | ConvertFrom-Json).remoteControlAtStartup | Should Be $true
+        Get-RcFile $true | Should Be (Join-Path $root '.claude-accounts\rc\on.json')
+    }
+}
+
+Describe 'Disable-SharedRc' {
+    It 'shared: true becomes false' {
         Set-Settings "{`n  `"theme`": `"dark`",`n  `"remoteControlAtStartup`": true`n}"
-        Set-RcDesligadoCompartilhado | Should Not BeNullOrEmpty
+        Disable-SharedRc | Should Not BeNullOrEmpty
         $s = Get-Settings
         $s.remoteControlAtStartup | Should Be $false
         $s.theme | Should Be 'dark'
     }
 
-    It 'compartilhado: insere quando falta' {
+    It 'shared: inserts when missing' {
         Set-Settings '{"theme":"dark"}'
-        Set-RcDesligadoCompartilhado | Should Not BeNullOrEmpty
+        Disable-SharedRc | Should Not BeNullOrEmpty
         $s = Get-Settings
         $s.remoteControlAtStartup | Should Be $false
         $s.theme | Should Be 'dark'
     }
 
-    It 'compartilhado: objeto vazio' {
+    It 'shared: empty object' {
         Set-Settings '{}'
-        $null = Set-RcDesligadoCompartilhado
+        $null = Disable-SharedRc
         (Get-Settings).remoteControlAtStartup | Should Be $false
     }
 
-    It 'compartilhado: ja false nao mexe' {
+    It 'shared: already false is left alone' {
         Set-Settings '{"remoteControlAtStartup": false, "theme":"dark"}'
-        $antes = (Get-Item $settings).LastWriteTimeUtc
+        $before = (Get-Item $settings).LastWriteTimeUtc
         Start-Sleep -Milliseconds 50
-        Set-RcDesligadoCompartilhado | Should Be $null
-        (Get-Item $settings).LastWriteTimeUtc | Should Be $antes
+        Disable-SharedRc | Should Be $null
+        (Get-Item $settings).LastWriteTimeUtc | Should Be $before
     }
 
-    It 'compartilhado: JSON invalido nao e regravado' {
-        $ruim = '{"theme":"dark",}'
-        Set-Settings $ruim
-        Set-RcDesligadoCompartilhado | Should Match 'invalido'
-        Get-Content -LiteralPath $settings -Raw | Should Be $ruim
+    It 'shared: invalid JSON is not rewritten' {
+        $broken = '{"theme":"dark",}'
+        Set-Settings $broken
+        Disable-SharedRc | Should Match 'invalid'
+        Get-Content -LiteralPath $settings -Raw | Should Be $broken
     }
 
-    It 'compartilhado: arquivo vazio vira objeto' {
+    It 'shared: empty file becomes an object' {
         Set-Settings ''
-        $null = Set-RcDesligadoCompartilhado
+        $null = Disable-SharedRc
         (Get-Settings).remoteControlAtStartup | Should Be $false
     }
 
-    It 'compartilhado: arquivo ausente' {
+    It 'shared: missing file' {
         Remove-Item $settings -ErrorAction SilentlyContinue
-        $null = Set-RcDesligadoCompartilhado
+        $null = Disable-SharedRc
         (Get-Settings).remoteControlAtStartup | Should Be $false
     }
 }
 
-$env:USERPROFILE = $perfilReal
-Remove-Item -LiteralPath $raiz -Recurse -Force -ErrorAction SilentlyContinue
+$env:USERPROFILE = $realProfile
+Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue

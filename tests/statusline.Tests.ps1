@@ -1,132 +1,132 @@
-. (Join-Path $PSScriptRoot '_contas-falsas.ps1')
-$perfilReal = $env:USERPROFILE
-$configReal = $env:CLAUDE_CONFIG_DIR
-$raiz = Join-Path ([IO.Path]::GetTempPath()) ("mc-sl-" + [guid]::NewGuid())
-. New-AmbienteFalso $raiz @{ principal = 'a'; contas = @{ a = @{ email = 'a@x'; pasta = '~/.claude' }; b = @{ email = 'b@x' } } }
-$contas = (Get-Contas).Contas
-$b = $contas | Where-Object Nome -eq 'b'
-$settings = Join-Path $raiz '.claude\settings.json'
+. (Join-Path $PSScriptRoot '_fake-accounts.ps1')
+$realProfile = $env:USERPROFILE
+$realConfig = $env:CLAUDE_CONFIG_DIR
+$root = Join-Path ([IO.Path]::GetTempPath()) ("mc-sl-" + [guid]::NewGuid())
+. New-FakeEnvironment $root @{ main = 'a'; accounts = @{ a = @{ email = 'a@x'; dir = '~/.claude' }; b = @{ email = 'b@x' } } }
+$accts = (Get-Accounts).Accounts
+$b = $accts | Where-Object Name -eq 'b'
+$settings = Join-Path $root '.claude\settings.json'
 $esc = [char]27
-$ponto = [char]0xB7
-function Texto([string]$conta, $c, $s) { $u = 'Sess' + [char]0xE3 + ('o: {0}% {1} Semana: {2}%' -f $c, $ponto, $s); if ($conta) { "$conta $ponto $u" } else { $u } }
+$dot = [char]0xB7
+function Expected([string]$account, $five, $week) { $u = ('Session: {0}% {1} Week: {2}%' -f $five, $dot, $week); if ($account) { "$account $dot $u" } else { $u } }
 function Remove-Ansi([string]$t) { $t -replace "$esc\[[0-9;]*m", '' }
-function New-Entrada($cinco, $semana) {
+function New-Input($five, $week) {
     [pscustomobject]@{ rate_limits = [pscustomobject]@{
-        five_hour = [pscustomobject]@{ used_percentage = $cinco }; seven_day = [pscustomobject]@{ used_percentage = $semana } } }
+        five_hour = [pscustomobject]@{ used_percentage = $five }; seven_day = [pscustomobject]@{ used_percentage = $week } } }
 }
 
 Describe 'Format-StatusLine' {
-    It 'cores' {
-        $t = Format-StatusLine (New-Entrada 50 85) $b 80
+    It 'colors' {
+        $t = Format-StatusLine (New-Input 50 85) $b 80
         $t | Should Match ([regex]::Escape("$esc[33m85%"))
         $t | Should Not Match ([regex]::Escape("$esc[") + '3[13]m50')
-        (Format-StatusLine (New-Entrada 96 10) $b 80) | Should Match ([regex]::Escape("$esc[31m96%"))
-        (Format-StatusLine (New-Entrada 50 10) $b 80) | Should Not Match ([regex]::Escape("$esc["))
+        (Format-StatusLine (New-Input 96 10) $b 80) | Should Match ([regex]::Escape("$esc[31m96%"))
+        (Format-StatusLine (New-Input 50 10) $b 80) | Should Not Match ([regex]::Escape("$esc["))
     }
 
-    It 'texto' {
-        Remove-Ansi (Format-StatusLine (New-Entrada 12 27) $b 80) | Should Be (Texto 'b' 12 27)
-        Remove-Ansi (Format-StatusLine (New-Entrada 12.6 27) $b 80) | Should Be (Texto 'b' 13 27)
+    It 'text' {
+        Remove-Ansi (Format-StatusLine (New-Input 12 27) $b 80) | Should Be (Expected 'b' 12 27)
+        Remove-Ansi (Format-StatusLine (New-Input 12.6 27) $b 80) | Should Be (Expected 'b' 13 27)
     }
 
-    It 'sem rate_limits' {
+    It 'without rate_limits' {
         Format-StatusLine ([pscustomobject]@{ model = 'x' }) $b 80 | Should Be 'b'
     }
 
-    It 'tempo ate reiniciar (resets_at em segundos Unix)' {
-        $agora = Get-Date
-        $seg = { param($d) [DateTimeOffset]::new($d).ToUnixTimeSeconds() }
-        $ent = [pscustomobject]@{ rate_limits = [pscustomobject]@{
-            five_hour = [pscustomobject]@{ used_percentage = 85; resets_at = (& $seg $agora.AddMinutes(125)) }
-            seven_day = [pscustomobject]@{ used_percentage = 10; resets_at = (& $seg $agora.AddHours(76)) } } }
-        $t = Format-StatusLine $ent $b 80 $agora
-        $t | Should Match ([regex]::Escape("$esc[33m85%$esc[0m (reinicia em 2h0"))
-        Remove-Ansi $t | Should Match ([regex]::Escape("Semana: 10% (reinicia em 3d 3h)") + '|' + [regex]::Escape("Semana: 10% (reinicia em 3d 4h)"))
+    It 'time until reset (resets_at in Unix seconds)' {
+        $now = Get-Date
+        $sec = { param($d) [DateTimeOffset]::new($d).ToUnixTimeSeconds() }
+        $in = [pscustomobject]@{ rate_limits = [pscustomobject]@{
+            five_hour = [pscustomobject]@{ used_percentage = 85; resets_at = (& $sec $now.AddMinutes(125)) }
+            seven_day = [pscustomobject]@{ used_percentage = 10; resets_at = (& $sec $now.AddHours(76)) } } }
+        $t = Format-StatusLine $in $b 80 $now
+        $t | Should Match ([regex]::Escape("$esc[33m85%$esc[0m (resets in 2h0"))
+        Remove-Ansi $t | Should Match ([regex]::Escape("Week: 10% (resets in 3d 3h)") + '|' + [regex]::Escape("Week: 10% (resets in 3d 4h)"))
     }
 
-    It 'sem conta' {
-        Remove-Ansi (Format-StatusLine (New-Entrada 12 27) $null 80) | Should Be (Texto $null 12 27)
+    It 'without account' {
+        Remove-Ansi (Format-StatusLine (New-Input 12 27) $null 80) | Should Be (Expected $null 12 27)
     }
 }
 
-Describe 'Get-ContaAtual' {
-    It 'conta atual' {
-        $env:CLAUDE_CONFIG_DIR = $b.Pasta
-        (Get-ContaAtual).Nome | Should Be 'b'
+Describe 'Get-CurrentAccount' {
+    It 'current account' {
+        $env:CLAUDE_CONFIG_DIR = $b.Dir
+        (Get-CurrentAccount).Name | Should Be 'b'
         Remove-Item Env:CLAUDE_CONFIG_DIR
-        (Get-ContaAtual).Nome | Should Be 'a'
+        (Get-CurrentAccount).Name | Should Be 'a'
     }
 }
 
 Describe 'statusline.ps1' {
-    It 'script ponta a ponta' {
+    It 'script end to end' {
         $script = Join-Path $ScriptsDir 'statusline.ps1'
-        $env:USERPROFILE = $raiz
-        $env:CLAUDE_CONFIG_DIR = $b.Pasta
-        $antes = [Console]::OutputEncoding
+        $env:USERPROFILE = $root
+        $env:CLAUDE_CONFIG_DIR = $b.Dir
+        $before = [Console]::OutputEncoding
         [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false
         $out = '{"rate_limits":{"five_hour":{"used_percentage":85},"seven_day":{"used_percentage":10}}}' |
             powershell -NoProfile -ExecutionPolicy Bypass -File $script
-        [Console]::OutputEncoding = $antes
+        [Console]::OutputEncoding = $before
         Remove-Item Env:CLAUDE_CONFIG_DIR
-        Remove-Ansi ($out -join '') | Should Be (Texto 'b' 85 10)
+        Remove-Ansi ($out -join '') | Should Be (Expected 'b' 85 10)
     }
 
-    It 'entrada invalida nao quebra' {
+    It 'invalid input does not break it' {
         $script = Join-Path $ScriptsDir 'statusline.ps1'
-        $out = 'nao e json' | powershell -NoProfile -ExecutionPolicy Bypass -File $script 2>&1
+        $out = 'not json' | powershell -NoProfile -ExecutionPolicy Bypass -File $script 2>&1
         ($out -join '').Trim() | Should Be ''
     }
 }
 
 Describe 'Register-StatusLine / Unregister-StatusLine' {
-    It 'register: insere e e idempotente' {
+    It 'register: inserts and is idempotent' {
         [IO.File]::WriteAllText($settings, '{"theme":"dark"}')
         $null = Register-StatusLine
         $s = Get-Content $settings -Raw | ConvertFrom-Json
         $s.statusLine.command | Should Match 'statusline\.ps1'
         $s.theme | Should Be 'dark'
-        $antes = Get-Content $settings -Raw
+        $before = Get-Content $settings -Raw
         Register-StatusLine | Should Be $null
-        Get-Content $settings -Raw | Should Be $antes
+        Get-Content $settings -Raw | Should Be $before
     }
 
-    It 'register: respeita outra status line' {
-        $outra = '{"theme":"dark","statusLine":{"type":"command","command":"outra.sh"}}'
-        [IO.File]::WriteAllText($settings, $outra)
-        Register-StatusLine | Should Match 'outra'
-        Get-Content $settings -Raw | Should Be $outra
+    It 'register: respects another status line' {
+        $other = '{"theme":"dark","statusLine":{"type":"command","command":"other.sh"}}'
+        [IO.File]::WriteAllText($settings, $other)
+        Register-StatusLine | Should Match 'another'
+        Get-Content $settings -Raw | Should Be $other
     }
 
-    It 'register e unregister: JSON invalido nao e regravado' {
-        $ruim = '{"theme":"dark",}'
-        [IO.File]::WriteAllText($settings, $ruim)
-        Register-StatusLine | Should Match 'invalido'
-        Get-Content $settings -Raw | Should Be $ruim
-        $ruim2 = '{"statusLine":{"type":"command","command":"x/statusline.ps1"},}'
-        [IO.File]::WriteAllText($settings, $ruim2)
-        Unregister-StatusLine | Should Match 'invalido'
-        Get-Content $settings -Raw | Should Be $ruim2
+    It 'register and unregister: invalid JSON is not rewritten' {
+        $broken = '{"theme":"dark",}'
+        [IO.File]::WriteAllText($settings, $broken)
+        Register-StatusLine | Should Match 'invalid'
+        Get-Content $settings -Raw | Should Be $broken
+        $broken2 = '{"statusLine":{"type":"command","command":"x/statusline.ps1"},}'
+        [IO.File]::WriteAllText($settings, $broken2)
+        Unregister-StatusLine | Should Match 'invalid'
+        Get-Content $settings -Raw | Should Be $broken2
     }
 
-    It 'unregister: remove so a nossa' {
+    It 'unregister: removes only ours' {
         [IO.File]::WriteAllText($settings, '{"theme":"dark"}')
         $null = Register-StatusLine
         Unregister-StatusLine
         $s = Get-Content $settings -Raw | ConvertFrom-Json
         $s.statusLine | Should Be $null
         $s.theme | Should Be 'dark'
-        # nossa como ultima chave (virgula antes, nao depois)
+        # ours as the last key (comma before, not after)
         [IO.File]::WriteAllText($settings, '{"theme":"dark","statusLine":{"type":"command","command":"powershell -File C:/x/statusline.ps1"}}')
         Unregister-StatusLine
         (Get-Content $settings -Raw | ConvertFrom-Json).theme | Should Be 'dark'
-        $outra = '{"statusLine":{"type":"command","command":"outra.sh"}}'
-        [IO.File]::WriteAllText($settings, $outra)
+        $other = '{"statusLine":{"type":"command","command":"other.sh"}}'
+        [IO.File]::WriteAllText($settings, $other)
         Unregister-StatusLine
-        Get-Content $settings -Raw | Should Be $outra
+        Get-Content $settings -Raw | Should Be $other
     }
 }
 
-$env:USERPROFILE = $perfilReal
-if ($null -ne $configReal) { $env:CLAUDE_CONFIG_DIR = $configReal }
-Remove-Item -LiteralPath $raiz -Recurse -Force -ErrorAction SilentlyContinue
+$env:USERPROFILE = $realProfile
+if ($null -ne $realConfig) { $env:CLAUDE_CONFIG_DIR = $realConfig }
+Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue

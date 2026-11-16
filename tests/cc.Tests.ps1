@@ -1,25 +1,25 @@
-. (Join-Path $PSScriptRoot '_contas-falsas.ps1')
-$perfilReal = $env:USERPROFILE
-$raiz = Join-Path ([IO.Path]::GetTempPath()) ("mc-cc-" + [guid]::NewGuid())
-. New-AmbienteFalso $raiz @{ principal = 'a'; contas = @{ a = @{ email = 'a@x' } } }
+. (Join-Path $PSScriptRoot '_fake-accounts.ps1')
+$realProfile = $env:USERPROFILE
+$root = Join-Path ([IO.Path]::GetTempPath()) ("mc-cc-" + [guid]::NewGuid())
+. New-FakeEnvironment $root @{ main = 'a'; accounts = @{ a = @{ email = 'a@x' } } }
 
-Describe 'Get-ArgsClaude' {
-    It 'acrescenta o --settings do RC' {
-        $a = Get-ArgsClaude ([pscustomobject]@{ Ligado = $true; Resto = @('-p', 'oi'); SettingsDoUsuario = $false })
-        ($a -join ' ') | Should Be ('-p oi --settings ' + (Join-Path $raiz '.claude-contas\rc\ligado.json'))
+Describe 'Get-ClaudeArgs' {
+    It 'appends the RC --settings' {
+        $a = Get-ClaudeArgs ([pscustomobject]@{ On = $true; Rest = @('-p', 'hi'); UserSettings = $false })
+        ($a -join ' ') | Should Be ('-p hi --settings ' + (Join-Path $root '.claude-accounts\rc\on.json'))
     }
 
-    It 'desligado aponta para desligado.json' {
-        $a = Get-ArgsClaude ([pscustomobject]@{ Ligado = $false; Resto = @(); SettingsDoUsuario = $false })
-        $a[-1] | Should Be (Join-Path $raiz '.claude-contas\rc\desligado.json')
+    It 'off points to off.json' {
+        $a = Get-ClaudeArgs ([pscustomobject]@{ On = $false; Rest = @(); UserSettings = $false })
+        $a[-1] | Should Be (Join-Path $root '.claude-accounts\rc\off.json')
     }
 
-    It 'nao duplica o --settings do usuario' {
-        $a = Get-ArgsClaude ([pscustomobject]@{ Ligado = $false; Resto = @('--settings', 'meu.json'); SettingsDoUsuario = $true })
+    It 'does not duplicate the user --settings' {
+        $a = Get-ClaudeArgs ([pscustomobject]@{ On = $false; Rest = @('--settings', 'mine.json'); UserSettings = $true })
         @($a | Where-Object { $_ -eq '--settings' }).Count | Should Be 1
-        ($a -join ' ') | Should Be '--settings meu.json'
+        ($a -join ' ') | Should Be '--settings mine.json'
     }
 }
 
-$env:USERPROFILE = $perfilReal
-Remove-Item -LiteralPath $raiz -Recurse -Force -ErrorAction SilentlyContinue
+$env:USERPROFILE = $realProfile
+Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue

@@ -1,34 +1,34 @@
-. (Join-Path $PSScriptRoot '_contas-falsas.ps1')
-$perfilReal = $env:USERPROFILE
+. (Join-Path $PSScriptRoot '_fake-accounts.ps1')
+$realProfile = $env:USERPROFILE
 
-# Grava o CLAUDE.md da pasta mestre e o modelo no ambiente falso montado por New-AmbienteFalso.
-function Set-ClaudeMdFalso([string]$raiz, [string]$texto) {
-    Copy-Item (Join-Path $ScriptsDir 'modelo-CLAUDE.md') (Join-Path $raiz '.claude-contas')
-    [IO.File]::WriteAllText((Join-Path $raiz '.claude\CLAUDE.md'), $texto)
-    Join-Path $raiz '.claude\CLAUDE.md'
+# Writes the master folder CLAUDE.md and the template into the fake environment built by New-FakeEnvironment.
+function Set-FakeClaudeMd([string]$root, [string]$text) {
+    Copy-Item (Join-Path $ScriptsDir 'CLAUDE.template.md') (Join-Path $root '.claude-accounts')
+    [IO.File]::WriteAllText((Join-Path $root '.claude\CLAUDE.md'), $text)
+    Join-Path $root '.claude\CLAUDE.md'
 }
 
-Describe 'Bloco do CLAUDE.md' {
-    AfterAll { $env:USERPROFILE = $perfilReal }
-    $antigo = "# Meu`n`n<!-- account-switcher:inicio -->`nvelho`n<!-- account-switcher:fim -->`n"
+Describe 'CLAUDE.md block' {
+    AfterAll { $env:USERPROFILE = $realProfile }
+    $stale = "# Mine`n`n<!-- account-switcher:begin -->`nstale-block`n<!-- account-switcher:end -->`n"
 
-    It 'troca o bloco existente pelo novo, sem duplicar e sem mexer no resto' {
-        $raiz = Join-Path $TestDrive 'm1'
-        . New-AmbienteFalso $raiz @{ principal = 'a'; contas = @{ a = @{ email = 'a@x' } } }
-        $md = Set-ClaudeMdFalso $raiz ($antigo + "`nfim do usuario`n")
+    It 'replaces the existing block with the new one, without duplicating or touching the rest' {
+        $root = Join-Path $TestDrive 'm1'
+        . New-FakeEnvironment $root @{ main = 'a'; accounts = @{ a = @{ email = 'a@x' } } }
+        $md = Set-FakeClaudeMd $root ($stale + "`nend of user text`n")
         Update-ClaudeMd
         $t = Get-Content $md -Raw
-        $t | Should Not Match 'velho'
-        ([regex]::Matches($t, '<!-- account-switcher:inicio -->')).Count | Should Be 1
-        $t | Should Match '# Meu'
-        $t | Should Match 'fim do usuario'
+        $t | Should Not Match 'stale-block'
+        ([regex]::Matches($t, '<!-- account-switcher:begin -->')).Count | Should Be 1
+        $t | Should Match '# Mine'
+        $t | Should Match 'end of user text'
     }
 
-    It 'remove o bloco' {
-        $raiz = Join-Path $TestDrive 'm2'
-        . New-AmbienteFalso $raiz @{ principal = 'a'; contas = @{ a = @{ email = 'a@x' } } }
-        $md = Set-ClaudeMdFalso $raiz $antigo
-        Remove-BlocoClaudeMd
-        (Get-Content $md -Raw).Trim() | Should Be '# Meu'
+    It 'removes the block' {
+        $root = Join-Path $TestDrive 'm2'
+        . New-FakeEnvironment $root @{ main = 'a'; accounts = @{ a = @{ email = 'a@x' } } }
+        $md = Set-FakeClaudeMd $root $stale
+        Remove-ClaudeMdBlock
+        (Get-Content $md -Raw).Trim() | Should Be '# Mine'
     }
 }
