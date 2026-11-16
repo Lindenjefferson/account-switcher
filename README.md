@@ -1,8 +1,8 @@
 # Account Switcher
 
-> *In English:* a Claude Code plugin for Windows that runs several Claude Code accounts on one PC, switched with `cc <account>` without logging in again. Only the login is per account; settings, history, memory, skills and plugins are shared. It also shows each account's usage and adds a `cc` shortcut to the Explorer address bar. The docs are in Portuguese.
+> *In English:* a Claude Code plugin that runs several Claude Code accounts on one computer, switched with a short command (`cc <account>` on Windows, `cca <account>` on macOS and Linux) without logging in again. Only the login is per account; settings, history, memory, skills and plugins are shared. It also shows each account's usage. **Windows** (PowerShell) and **macOS / Linux** (bash) are both supported. The Windows docs are in Portuguese; the macOS / Linux docs are in English.
 
-Várias contas do [Claude Code](https://code.claude.com) no mesmo PC com Windows: uma conta principal e quantas secundárias você quiser, alternadas com `cc <conta>` sem relogar. Cada conta tem só o login separado; o resto do ambiente é o mesmo em todas.
+Várias contas do [Claude Code](https://code.claude.com) no mesmo PC com Windows (e, em inglês, no macOS e no Linux, veja [macOS and Linux](#macos-and-linux)): uma conta principal e quantas secundárias você quiser, alternadas com `cc <conta>` sem relogar. Cada conta tem só o login separado; o resto do ambiente é o mesmo em todas.
 
 O objetivo é trocar de conta (por exemplo, para ter mais cota) sem perder nada: o histórico, a memória, as skills, os plugins e a lista de sessões continuam iguais, qualquer que seja a conta aberta.
 
@@ -54,6 +54,54 @@ Depois, numa sessão do Claude Code, peça **"instala a skill account-switcher"*
 2. Rode `cc <conta>` e faça `/login` uma vez em cada conta que ainda não está logada.
 3. Confira com `cc -l`. Daí em diante, é só `cc <conta>` no terminal ou na barra do Explorer.
 
+## macOS and Linux
+
+The same idea for macOS and Linux, written in bash (it runs on the bash 3.2 that ships with macOS) instead of PowerShell. It lives in [`plugins/account-switcher/skills/account-switcher/scripts-unix/`](plugins/account-switcher/skills/account-switcher/scripts-unix) and is independent from the Windows scripts: nothing in the Windows version changed.
+
+**What is the same:** every account has its own folder (`CLAUDE_CONFIG_DIR`) with its own login, and everything else (settings, history, `CLAUDE.md`, projects, skills, plugins, sessions) is shared with `~/.claude`. One main account, per-account Remote Control, usage per account in `-l` and in the status line, a warning (and a suggestion of another account) when usage is high, and a `CLAUDE.md` block with the rules.
+
+**What is different:**
+
+| | Windows | macOS / Linux |
+|---|---|---|
+| Command | `cc` | `cca` by default (key `command`). `cc` is the C compiler on these systems, so the installer refuses a name that already exists on `PATH` |
+| Scripts and config | `~/.claude-contas`, `contas.json` | `~/.claude-accounts`, `accounts.json` (English keys, see below) |
+| Shared folders and files | junctions, symlinks or hard links | symlinks |
+| `PATH` | user `PATH` | a marked block in your shell startup file (zsh, bash and fish are handled), appended at the **end** of `PATH`. `--no-path` skips it |
+| Explorer address bar shortcut | yes | not applicable |
+| Opening another account's session | `abrir-conta.ps1` (Windows Terminal) | `open-account.sh` (Terminal.app or iTerm2 on macOS; tmux or the first terminal emulator found on Linux) |
+| Live usage | token from `.credentials.json` | Linux: same, when Claude keeps its login in `.credentials.json`. **macOS keeps the login in the Keychain**, which the scripts never read, so `-l` shows the last usage Claude saved for the account (marked "saved"). The **status line** is live on both, because Claude Code sends it the numbers |
+
+**Requirements:** bash 3.2 or newer, [`jq`](https://jqlang.github.io/jq/) (preinstalled on recent macOS; otherwise `brew install jq` or your package manager), `curl`, and Claude Code installed and logged in to one account.
+
+**Install:** the marketplace is the same (`/plugin marketplace add Lindenjefferson/account-switcher`, then `/plugin install account-switcher@account-switcher`), then ask Claude to "install the account-switcher skill" and it will follow the macOS / Linux steps in [`SKILL.md`](plugins/account-switcher/skills/account-switcher/SKILL.md). Without the skill, from the plugin folder:
+
+1. Copy `accounts.example.json` to `~/.claude-accounts/accounts.json` and edit it.
+2. Run `bash install.sh --check`. It prints where `claude` is and any problem (missing `jq`, a command name that is already taken) without changing anything.
+3. Run `bash install.sh`. It makes a one-time backup, copies the scripts to `~/.claude-accounts`, creates the account folders and links, adds the `PATH` block, writes the `CLAUDE.md` block and ends with `cca -l`.
+4. Open a **new** terminal, run `cca <account>` and `/login` once in every account that is not logged in yet.
+
+**`accounts.json`:**
+
+| Key | What it is | If missing |
+|---|---|---|
+| `main` | Name of the main account: the one that publishes artifacts and, without `default`, the one `cca` opens with no argument | Required |
+| `default` | Account `cca` opens with no argument | The main one |
+| `publish` | Account that publishes artifacts | The main one |
+| `command` | Name of the command installed in `~/.claude-accounts/bin` | `cca` |
+| `chrome` | Account the Claude in Chrome extension is logged in to (informational) | Not set |
+| `usageWarning` | Usage percentage (1 to 100) from which `cca` warns and the status line turns yellow | 80 |
+| `accounts` | One entry per account; key = short name (letters, digits, `_`, `.`, `-`) | Required |
+| `accounts.<name>.email` | Expected e-mail; the command compares it with the logged-in one and warns on a mismatch | |
+| `accounts.<name>.dir` | Config folder. Only one account may use `"~/.claude"` (the master folder) | `~/.claude-accounts/<name>`; if no account has `dir`, the main one uses `~/.claude` |
+| `accounts.<name>.rc` | `true` turns Remote Control on when opening the account with `cca` | Off |
+
+**Use:** `cca <account>` opens Claude in that account (`cca` alone opens the default), `cca -l` lists the accounts, `--rc` / `--no-rc` change Remote Control for that session only. Everything after the account name goes to `claude`. Maintenance (`setup-accounts.sh` after adding an account, `install.sh` after updating the plugin, `uninstall.sh [--delete-folders]`) is described in [`SKILL.md`](plugins/account-switcher/skills/account-switcher/SKILL.md).
+
+**Safety:** it never touches the Keychain or any credentials file; the usage token (Linux) is read in memory and handed to `curl` through stdin, so it does not show up in `ps`; `settings.json` and `CLAUDE.md` are edited in place with text insertions (your formatting and symlinks are kept) and are not written at all if the JSON is already broken; `uninstall.sh` removes only links that point into `~/.claude`.
+
+**Tests:** `bash tests/unix/run.sh` (no framework, no network, a fake `HOME` per test file, so your `~/.claude` is never touched). They pass on macOS (bash 3.2) and on Debian (bash 5.2, GNU `date`, `jq` 1.6).
+
 ## O `contas.json`
 
 Fica em `~/.claude-contas/contas.json`, no formato de [`contas.exemplo.json`](plugins/account-switcher/skills/account-switcher/scripts/contas.exemplo.json). Chaves que os scripts leem:
@@ -94,7 +142,7 @@ Os scripts ficam em [`plugins/account-switcher/skills/account-switcher/scripts/`
 
 ## Testes
 
-Os testes ficam em [`tests/`](tests) e rodam na raiz do repositório com `Invoke-Pester tests`. Eles usam o **Pester 3.4, que já vem com o Windows PowerShell 5.1** (o Pester 4 também serve); a sintaxe antiga dos testes (`Should Be`) não roda no Pester 5. Cada arquivo de teste monta um perfil de usuário falso numa pasta temporária e aponta o `comum.ps1` para ele, então nada do seu `~/.claude` nem do seu `contas.json` é tocado.
+Os testes ficam em [`tests/`](tests) e rodam na raiz do repositório com `Invoke-Pester tests`. Eles usam o **Pester 3.4, que já vem com o Windows PowerShell 5.1** (o Pester 4 também serve); a sintaxe antiga dos testes (`Should Be`) não roda no Pester 5. Cada arquivo de teste monta um perfil de usuário falso numa pasta temporária e aponta o `comum.ps1` para ele, então nada do seu `~/.claude` nem do seu `contas.json` é tocado. Os testes do macOS / Linux são outros: `bash tests/unix/run.sh` (veja [macOS and Linux](#macos-and-linux)).
 
 ## Glossário
 
@@ -119,7 +167,8 @@ Depois de atualizar o plugin, peça à skill para reinstalar ou rode `instalar.p
 - Edite os scripts no repositório, em `plugins/account-switcher/skills/account-switcher/scripts/`, nunca a cópia em `~/.claude-contas`: o próximo `instalar.ps1` sobrescreve a cópia.
 - Para testar uma mudança no seu PC, rode `instalar.ps1` de novo (ele só copia os scripts e refaz o que falta).
 - Arquivos `.ps1` ficam só em ASCII (sem acentos): o Windows PowerShell 5.1 lê `.ps1` sem BOM como ANSI. Os acentos que aparecem na tela saem de códigos de caractere no próprio script. `.ps1` e `.cmd` são gravados com CRLF (`.gitattributes`).
-- Rode `Invoke-Pester tests` antes de abrir o PR e acrescente testes em `tests/` para o que mudou.
+- Rode `Invoke-Pester tests` antes de abrir o PR e acrescente testes em `tests/` para o que mudou. Se mexer nos scripts do macOS / Linux, rode também `bash tests/unix/run.sh`.
+- Os scripts `.sh` ficam em `scripts-unix/`, em UTF-8 com LF, compatíveis com o bash 3.2 do macOS (sem arrays associativos, sem `mapfile`), com código e mensagens em inglês.
 - A pasta `docs/superpowers` é o histórico de projeto de entregas passadas, não documentação de uso.
 
 ## Licença
