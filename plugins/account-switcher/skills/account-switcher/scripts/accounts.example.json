@@ -1,0 +1,11 @@
+{
+  "main": "main",
+  "explorerShortcut": "cc",
+  "chrome": "main",
+  "usageWarning": 80,
+  "accounts": {
+    "main":       { "email": "you@example.com", "dir": "~/.claude", "rc": true },
+    "secondary1": { "email": "other@example.com" },
+    "secondary2": { "email": "another@example.com" }
+  }
+}

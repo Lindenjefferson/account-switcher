@@ -7,8 +7,8 @@
     {
       "name": "account-switcher",
       "source": "./plugins/account-switcher",
-      "description": "Várias contas do Claude Code no Windows com `cc <conta>` e atalho no Explorer."
+      "description": "Several Claude Code accounts on Windows, macOS and Linux, switched with a short command."
     }
   ],
-  "description": "Plugin account-switcher para o Claude Code."
+  "description": "Several Claude Code accounts on one computer, switched with a short command without logging in again."
 }

@@ -1,93 +1,93 @@
-# cc [conta] [--rc|--no-rc] [argumentos do claude...]   abre o Claude Code na conta (padrao: "padrao" do contas.json)
-# cc -l                                                 lista as contas, o e-mail logado, o RC e o uso de cada uma
-# --rc / --no-rc liga ou desliga o Remote Control so nesta sessao (padrao: "rc" da conta no contas.json).
-. (Join-Path $PSScriptRoot 'comum.ps1')
-$null = Clear-AmbienteSessaoPai
+# cc [account] [--rc|--no-rc] [claude arguments...]   opens Claude Code as an account (default: "default" in accounts.json)
+# cc -l                                               lists the accounts with the logged-in e-mail, RC and usage
+# --rc / --no-rc turns Remote Control on or off for this session only (default: "rc" of the account in accounts.json).
+. (Join-Path $PSScriptRoot 'common.ps1')
+$null = Clear-ParentSessionEnv
 
-$cfg = Get-Contas
-$resto = @($args)
+$cfg = Get-Accounts
+$rest = @($args)
 
-if ($resto.Count -and $resto[0] -in '-l', '--listar', '--contas') {
-    $(foreach ($c in $cfg.Contas) {
-        $s = if (Test-Path -LiteralPath $c.Pasta) { Get-StatusConta $c } else { $null }
-        $logado = if (-not $s) { 'pasta nao criada (rode setup-contas.ps1)' }
-                  elseif ($s.loggedIn) { $s.email + $(if ($s.email -ne $c.Email) { '  <-- DIFERENTE do configurado' }) }
-                  else { 'nao logada' }
-        $papel = @()
-        if ($c.Nome -eq $cfg.Publicar) { $papel += 'principal' }
-        if ($c.Nome -eq $cfg.Chrome) { $papel += 'Chrome' }
-        $uso = Get-UsoConta $c
-        $max = Get-MaxUso $uso
+if ($rest.Count -and $rest[0] -in '-l', '--list') {
+    $(foreach ($c in $cfg.Accounts) {
+        $s = if (Test-Path -LiteralPath $c.Dir) { Get-AccountStatus $c } else { $null }
+        $loggedIn = if (-not $s) { 'folder not created (run setup-accounts.ps1)' }
+                    elseif ($s.loggedIn) { $s.email + $(if ($s.email -ne $c.Email) { '  <-- DIFFERENT from the configured one' }) }
+                    else { 'not logged in' }
+        $role = @()
+        if ($c.Name -eq $cfg.Publish) { $role += 'main' }
+        if ($c.Name -eq $cfg.Chrome) { $role += 'Chrome' }
+        $usage = Get-AccountUsage $c
+        $max = Get-MaxUsage $usage
         [pscustomobject]@{
-            Conta  = $c.Nome + $(if ($c.Nome -eq $cfg.Padrao) { ' *' })
-            Papel    = ($papel -join ', ')
-            Esperado = $c.Email
-            Logado   = $logado
-            RC     = $(if ($c.Rc) { 'ligado' } else { 'desligado' })
-            Uso    = $(if ($null -ne $max -and $max -ge $cfg.AvisoUso) { '! ' }) + (Format-Uso $uso)
+            Account  = $c.Name + $(if ($c.Name -eq $cfg.Default) { ' *' })
+            Role     = ($role -join ', ')
+            Expected = $c.Email
+            LoggedIn = $loggedIn
+            RC       = $(if ($c.Rc) { 'on' } else { 'off' })
+            Usage    = $(if ($null -ne $max -and $max -ge $cfg.UsageWarning) { '! ' }) + (Format-Usage $usage)
         }
     }) | Format-Table -AutoSize | Out-String -Width 300 | Write-Host
-    Write-Host '* = conta padrao (cc sem argumento); Chrome = conta logada na extensao Claude in Chrome'
-    Write-Host "RC = Remote Control ao abrir com cc (mude na hora com --rc / --no-rc); ! = uso >= $($cfg.AvisoUso)%"
+    Write-Host '* = default account (cc with no argument); Chrome = account logged in to the Claude in Chrome extension'
+    Write-Host "RC = Remote Control when opening with cc (change it on the spot with --rc / --no-rc); ! = usage >= $($cfg.UsageWarning)%"
     return
 }
 
-$conta = $cfg.Contas | Where-Object Nome -eq $cfg.Padrao
-if ($resto.Count -and -not "$($resto[0])".StartsWith('-')) {
-    $conta = $cfg.Contas | Where-Object Nome -eq $resto[0]
-    if (-not $conta) {
-        Write-Host "Conta '$($resto[0])' nao existe. Contas: $($cfg.Contas.Nome -join ', ')" -ForegroundColor Red
+$account = $cfg.Accounts | Where-Object Name -eq $cfg.Default
+if ($rest.Count -and -not "$($rest[0])".StartsWith('-')) {
+    $account = $cfg.Accounts | Where-Object Name -eq $rest[0]
+    if (-not $account) {
+        Write-Host "Account '$($rest[0])' does not exist. Accounts: $($cfg.Accounts.Name -join ', ')" -ForegroundColor Red
         return
     }
-    $resto = @($resto | Select-Object -Skip 1)
+    $rest = @($rest | Select-Object -Skip 1)
 }
-$decisao = Split-ArgsRc $conta $resto
-$resto = $decisao.Resto
+$rc = Split-RcArgs $account $rest
+$rest = $rc.Rest
 
-foreach ($m in (Sync-LinksConta $conta)) { Write-Host "[$($conta.Nome)] $m" -ForegroundColor DarkGray }
+foreach ($m in (Sync-AccountLinks $account)) { Write-Host "[$($account.Name)] $m" -ForegroundColor DarkGray }
 try {
-    $m = Set-RcDesligadoCompartilhado
-    if ($m) { Write-Host "[$($conta.Nome)] $m" -ForegroundColor DarkGray }
+    $m = Disable-SharedRc
+    if ($m) { Write-Host "[$($account.Name)] $m" -ForegroundColor DarkGray }
 } catch {
-    Write-Host "Nao consegui conferir o RC no settings.json compartilhado: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "Could not check RC in the shared settings.json: $($_.Exception.Message)" -ForegroundColor Yellow
 }
-if ($decisao.SettingsDoUsuario) { Write-Host 'Voce passou --settings: o RC segue o que estiver nele.' -ForegroundColor Yellow }
+if ($rc.UserSettings) { Write-Host 'You passed --settings: RC follows whatever it says.' -ForegroundColor Yellow }
 
-$s = Get-StatusConta $conta
+$s = Get-AccountStatus $account
 if (-not $s.loggedIn) {
-    Write-Host "Conta $($conta.Nome) ainda nao esta logada: use /login com $($conta.Email)" -ForegroundColor Yellow
-} elseif ($s.email -ne $conta.Email) {
-    Write-Host "ATENCAO: a pasta da conta $($conta.Nome) esta logada como $($s.email), mas o esperado e $($conta.Email)." -ForegroundColor Red
-    if ((Read-Host 'Abrir mesmo assim? (s/N)') -notmatch '^[sS]') { return }
+    Write-Host "Account $($account.Name) is not logged in yet: use /login with $($account.Email)" -ForegroundColor Yellow
+} elseif ($s.email -ne $account.Email) {
+    Write-Host "WARNING: the folder of account $($account.Name) is logged in as $($s.email), but $($account.Email) was expected." -ForegroundColor Red
+    if ((Read-Host 'Open anyway? (y/N)') -notmatch '^[yY]') { return }
 }
 
-# Uso alto: avisa, sugere a conta com mais folga e pergunta (no modo -p so avisa em stderr).
-$naoInterativo = [bool]($resto | Where-Object { $_ -in '-p', '--print' })
-$uso = Get-UsoConta $conta
-$max = Get-MaxUso $uso
-if ($null -ne $max -and $max -ge $cfg.AvisoUso) {
-    $linhas = @("Conta $($conta.Nome) com uso alto: $(Format-Uso $uso)")
-    $usos = @{}
-    foreach ($o in ($cfg.Contas | Where-Object Nome -ne $conta.Nome)) { $usos[$o.Nome] = Get-UsoConta $o }
-    $sug = Select-ContaSugerida $usos $conta.Nome
-    if ($sug -and (Get-MaxUso $usos[$sug]) -lt $max) { $linhas += "Sugestao: cc $sug ($(Format-Uso $usos[$sug]))" }
-    if ($naoInterativo) {
-        $linhas | ForEach-Object { [Console]::Error.WriteLine($_) }
+# High usage: warns, suggests the account with the most headroom and asks (with -p it only warns, on stderr).
+$nonInteractive = [bool]($rest | Where-Object { $_ -in '-p', '--print' })
+$usage = Get-AccountUsage $account
+$max = Get-MaxUsage $usage
+if ($null -ne $max -and $max -ge $cfg.UsageWarning) {
+    $lines = @("Account $($account.Name) has high usage: $(Format-Usage $usage)")
+    $usages = @{}
+    foreach ($o in ($cfg.Accounts | Where-Object Name -ne $account.Name)) { $usages[$o.Name] = Get-AccountUsage $o }
+    $suggestion = Select-SuggestedAccount $usages $account.Name
+    if ($suggestion -and (Get-MaxUsage $usages[$suggestion]) -lt $max) { $lines += "Suggestion: cc $suggestion ($(Format-Usage $usages[$suggestion]))" }
+    if ($nonInteractive) {
+        $lines | ForEach-Object { [Console]::Error.WriteLine($_) }
     } else {
-        $linhas | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
-        if ((Read-Host 'Abrir mesmo assim? (s/N)') -notmatch '^[sS]') { return }
+        $lines | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
+        if ((Read-Host 'Open anyway? (y/N)') -notmatch '^[yY]') { return }
     }
 }
 
-# Nome da sessao = pasta (conta), a menos que o usuario esteja retomando ou ja tenha dado nome.
+# Session name = folder (account), unless the user is resuming or already named it.
 $extra = @()
-if (-not ($resto | Where-Object { $_ -in '-n', '--name', '-r', '--resume', '-c', '--continue', '-p', '--print' })) {
-    $extra = @('-n', ('{0} ({1})' -f (Split-Path -Leaf (Get-Location)), $conta.Nome))
+if (-not ($rest | Where-Object { $_ -in '-n', '--name', '-r', '--resume', '-c', '--continue', '-p', '--print' })) {
+    $extra = @('-n', ('{0} ({1})' -f (Split-Path -Leaf (Get-Location)), $account.Name))
 }
-$argsClaude = Get-ArgsClaude $decisao
+$claudeArgs = Get-ClaudeArgs $rc
 
 try {
-    Invoke-ComConta $conta { & $Claude @extra @argsClaude }
+    Invoke-WithAccount $account { & $Claude @extra @claudeArgs }
 } finally {
-    $null = Sync-LinksConta $conta
+    $null = Sync-AccountLinks $account
 }
