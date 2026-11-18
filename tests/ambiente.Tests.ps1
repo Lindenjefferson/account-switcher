@@ -43,6 +43,68 @@ Describe 'Clear-AmbienteSessaoPai' {
     }
 }
 
+Describe 'Clear-AmbienteSessaoPai fora das CLAUDE*' {
+    It 'tira NO_COLOR e as GIT_* que a sessao pai define, para a janela nova abrir com cor' {
+        $nomes = 'NO_COLOR', 'GIT_TERMINAL_PROMPT', 'GIT_EDITOR', 'GIT_ASKPASS'
+        $guardado = @{}
+        foreach ($n in $nomes) { $guardado[$n] = [Environment]::GetEnvironmentVariable($n, 'Process') }
+        try {
+            $cc = $env:CLAUDECODE
+            $env:CLAUDECODE = '1'
+            foreach ($n in $nomes) { Set-Item "Env:$n" '1' }
+            $tirados = Clear-AmbienteSessaoPai @()
+            foreach ($n in $nomes) {
+                [Environment]::GetEnvironmentVariable($n, 'Process') | Should Be $null
+                ($tirados -contains $n) | Should Be $true
+            }
+        } finally {
+            foreach ($n in $nomes) { [Environment]::SetEnvironmentVariable($n, $guardado[$n], 'Process') }
+            [Environment]::SetEnvironmentVariable('CLAUDECODE', $cc, 'Process')
+        }
+    }
+
+    It 'tira uma GIT_ASKPASS vazia herdada, sem erro' {
+        $comum = Join-Path $PSScriptRoot '..\plugins\account-switcher\skills\account-switcher\scripts\comum.ps1'
+        $psi = New-Object Diagnostics.ProcessStartInfo 'powershell.exe'
+        $psi.Arguments = "-NoProfile -Command `". '$comum'; `$null = Clear-AmbienteSessaoPai @(); " +
+            "if (Test-Path Env:GIT_ASKPASS) { 'ficou' } else { 'saiu' }`""
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.EnvironmentVariables['GIT_ASKPASS'] = ''
+        $psi.EnvironmentVariables['CLAUDECODE'] = '1'
+        $p = [Diagnostics.Process]::Start($psi)
+        $saida = $p.StandardOutput.ReadToEnd()
+        $erro = $p.StandardError.ReadToEnd()
+        $p.WaitForExit()
+        $saida.Trim() | Should Be 'saiu'
+        $erro | Should BeNullOrEmpty
+    }
+
+    It 'fora de uma sessao do Claude, mantem NO_COLOR (o cc digitado no shell do usuario)' {
+        $antes, $cc = $env:NO_COLOR, $env:CLAUDECODE
+        try {
+            Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue
+            $env:NO_COLOR = '1'
+            $null = Clear-AmbienteSessaoPai @()
+            $env:NO_COLOR | Should Be '1'
+        } finally {
+            [Environment]::SetEnvironmentVariable('NO_COLOR', $antes, 'Process')
+            [Environment]::SetEnvironmentVariable('CLAUDECODE', $cc, 'Process')
+        }
+    }
+
+    It 'mantem NO_COLOR quando o usuario o definiu no ambiente dele (User/Machine)' {
+        $antes = $env:NO_COLOR
+        try {
+            $env:NO_COLOR = '1'
+            $tirados = Clear-AmbienteSessaoPai @('NO_COLOR')
+            $env:NO_COLOR | Should Be '1'
+            ($tirados -contains 'NO_COLOR') | Should Be $false
+        } finally { [Environment]::SetEnvironmentVariable('NO_COLOR', $antes, 'Process') }
+    }
+}
+
 Describe 'Repair-TempSessao' {
     It 'troca TMP e TEMP que apontam para a pasta do Windows pela temp do usuario' {
         $tmp, $temp = $env:TMP, $env:TEMP
