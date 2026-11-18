@@ -180,16 +180,23 @@ function Invoke-ComConta($conta, [scriptblock]$bloco) {
 # Um cc chamado de dentro de uma sessao do Claude (abrir-conta.ps1, ! no prompt) herda as variaveis
 # CLAUDE* dela; com CLAUDE_CODE_CHILD_SESSION, a sessao nova nao salva transcript nem aparece no
 # ListAgents. Tira essas, menos CLAUDE_CONFIG_DIR (que o proprio cc controla) e as que o usuario
-# definiu no ambiente dele (User/Machine), como CLAUDE_CODE_GIT_BASH_PATH. Devolve os nomes tirados.
+# definiu no ambiente dele (User/Machine), como CLAUDE_CODE_GIT_BASH_PATH. Tira tambem NO_COLOR (a
+# janela nova abriria sem cor) e as GIT_* que a sessao pai define para os comandos dela. Devolve os
+# nomes tirados.
+$script:NomesSessaoPai = 'NO_COLOR', 'GIT_TERMINAL_PROMPT', 'GIT_EDITOR', 'GIT_ASKPASS'
+
 function Get-NomesClaudePersistentes {
     foreach ($alvo in 'User', 'Machine') {
-        [Environment]::GetEnvironmentVariables($alvo).Keys | Where-Object { "$_" -like 'CLAUDE*' }
+        [Environment]::GetEnvironmentVariables($alvo).Keys | Where-Object {
+            "$_" -like 'CLAUDE*' -or $script:NomesSessaoPai -contains "$_"
+        }
     }
 }
 
 function Clear-AmbienteSessaoPai([string[]]$persistentes = @(Get-NomesClaudePersistentes)) {
     Get-ChildItem Env: | Where-Object {
-        $_.Name -like 'CLAUDE*' -and $_.Name -ne 'CLAUDE_CONFIG_DIR' -and $persistentes -notcontains $_.Name
+        (($_.Name -like 'CLAUDE*' -and $_.Name -ne 'CLAUDE_CONFIG_DIR') -or $script:NomesSessaoPai -contains $_.Name) -and
+        $persistentes -notcontains $_.Name
     } | ForEach-Object {
         Remove-Item "Env:$($_.Name)"
         $_.Name
