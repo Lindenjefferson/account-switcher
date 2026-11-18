@@ -43,6 +43,34 @@ Describe 'Clear-AmbienteSessaoPai' {
     }
 }
 
+Describe 'Clear-AmbienteSessaoPai fora das CLAUDE*' {
+    It 'tira NO_COLOR e as GIT_* que a sessao pai define, para a janela nova abrir com cor' {
+        $nomes = 'NO_COLOR', 'GIT_TERMINAL_PROMPT', 'GIT_EDITOR', 'GIT_ASKPASS'
+        $guardado = @{}
+        foreach ($n in $nomes) { $guardado[$n] = [Environment]::GetEnvironmentVariable($n, 'Process') }
+        try {
+            foreach ($n in $nomes) { Set-Item "Env:$n" '1' }
+            $tirados = Clear-AmbienteSessaoPai @()
+            foreach ($n in $nomes) {
+                [Environment]::GetEnvironmentVariable($n, 'Process') | Should Be $null
+                ($tirados -contains $n) | Should Be $true
+            }
+        } finally {
+            foreach ($n in $nomes) { [Environment]::SetEnvironmentVariable($n, $guardado[$n], 'Process') }
+        }
+    }
+
+    It 'mantem NO_COLOR quando o usuario o definiu no ambiente dele (User/Machine)' {
+        $antes = $env:NO_COLOR
+        try {
+            $env:NO_COLOR = '1'
+            $tirados = Clear-AmbienteSessaoPai @('NO_COLOR')
+            $env:NO_COLOR | Should Be '1'
+            ($tirados -contains 'NO_COLOR') | Should Be $false
+        } finally { [Environment]::SetEnvironmentVariable('NO_COLOR', $antes, 'Process') }
+    }
+}
+
 Describe 'Repair-TempSessao' {
     It 'troca TMP e TEMP que apontam para a pasta do Windows pela temp do usuario' {
         $tmp, $temp = $env:TMP, $env:TEMP
